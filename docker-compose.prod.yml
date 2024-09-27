@@ -1,12 +1,12 @@
 services:
   summarise:
     image: ghcr.io/accurate0/summarise:${SOURCE_COMMIT}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
-      - DATABASE_URL=postgres://postgres:test@database/bot
+      - DATABASE_URL
       - DISCORD_TOKEN
-      - OLLAMA_API_BASE=http://ollama
+      - OLLAMA_API_BASE
       - OPENAI_API_KEY
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
