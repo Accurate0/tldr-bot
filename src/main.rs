@@ -309,6 +309,9 @@ async fn main() -> anyhow::Result<()> {
     let openai_api_key = std::env::var("OPENAI_API_KEY")?;
 
     let ollama = ollama_rs::Ollama::new(ollama_api_base, 11434);
+    ollama
+        .pull_model(OLLAMA_MODEL_NAME.to_string(), false)
+        .await?;
 
     let openai = OpenAIClient::new(openai_api_key);
 
