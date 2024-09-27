@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT role as \"type: RoleType\" FROM USERS WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "type: RoleType",
+        "type_info": {
+          "Custom": {
+            "name": "role_t",
+            "kind": {
+              "Enum": [
+                "user",
+                "admin"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2a8ce1ea0399c4b73eb403f4208c8e4c1ef8487cdf17ffb5bff03747389a3030"
+}

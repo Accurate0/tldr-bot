@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE settings SET value = $1 WHERE key = 'ai_source'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ed9e648a6a9edb4f7a8116bf147f1516893a192b76700c19010d68e70370b806"
+}

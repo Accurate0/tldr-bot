@@ -1,0 +1,16 @@
+CREATE TABLE settings (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE users (
+    id TEXT NOT NULL PRIMARY KEY,
+    created TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE summaries (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) NOT NULL,
+    summary JSONB NOT NULL,
+    created TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
+);

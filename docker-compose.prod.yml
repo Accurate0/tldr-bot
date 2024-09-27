@@ -1,0 +1,16 @@
+services:
+  summarise:
+    image: ghcr.io/accurate0/summarise:${SOURCE_COMMIT}
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:test@database/bot
+      - DISCORD_TOKEN
+      - OLLAMA_API_BASE=http://ollama
+      - OPENAI_API_KEY
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 90s
+      timeout: 10s
+      retries: 3
+      start_period: 1s
