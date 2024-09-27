@@ -35,7 +35,7 @@ jobs:
         uses: reproducible-containers/buildkit-cache-dance@v2.1.4
         with:
           cache-source: app-target
-          cache-target: /app/build/target/
+          cache-target: /app/summarise-build/target/
 
       - uses: actions/cache@v4
         with:
