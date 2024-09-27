@@ -1,5 +1,6 @@
 use anyhow::Context;
 use axum::{routing::get, Router};
+use chrono::{NaiveDateTime, TimeDelta};
 use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
 use openai_api_rs::v1::{
     api::OpenAIClient,
@@ -81,6 +82,7 @@ struct BotContext {
 async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()> {
     #[allow(clippy::match_single_binding)]
     match event {
+        Event::GatewayHeartbeatAck => {}
         // Other events here...
         e => {
             tracing::warn!("bad event: {e:?}")
@@ -163,8 +165,20 @@ async fn source(
 #[only_guilds]
 #[description = "summary"]
 #[error_handler(handle_interaction_error)]
-async fn summarise(ctx: &mut SlashContext<BotContext>) -> DefaultCommandResult {
-    ctx.defer(false).await?;
+async fn summarise(
+    ctx: &mut SlashContext<BotContext>,
+    #[description = "how far to go back in summary (default: 2h)"] timeframe: Option<String>,
+    #[description = "only show me the message"] ephemeral: Option<bool>,
+) -> DefaultCommandResult {
+    let ephemeral = ephemeral.unwrap_or(false);
+    let timeframe = timeframe.unwrap_or("2h".to_owned());
+    let hours = timeframe.replace("h", "").parse::<i64>()?;
+    let from = chrono::offset::Utc::now()
+        .naive_utc()
+        .checked_sub_signed(TimeDelta::hours(hours))
+        .context("must be valid time")?;
+
+    ctx.defer(ephemeral).await?;
 
     let author_id = ctx
         .interaction
@@ -192,18 +206,51 @@ async fn summarise(ctx: &mut SlashContext<BotContext>) -> DefaultCommandResult {
         .as_ref()
         .context("must have channel")?;
 
-    let messages_to_summarise = ctx
-        .http_client()
-        .channel_messages(channel.id)
-        // .before(message_id)
-        .limit(20)?
-        .await?
-        .models()
-        .await?;
+    let max_messages = 50;
+    let mut messages_to_summarise = vec![];
+    let mut last_message_id = None;
+
+    loop {
+        let channel_messages = ctx.http_client().channel_messages(channel.id);
+
+        let channel_messages = if let Some(last_message_id) = last_message_id {
+            channel_messages
+                .before(last_message_id)
+                .limit(100)?
+                .await?
+                .models()
+                .await?
+        } else {
+            channel_messages.limit(100)?.await?.models().await?
+        };
+
+        let mut msgs = channel_messages
+            .into_iter()
+            .filter(|m| m.author.id != bot_id)
+            .filter(|m| m.author.name != "Summarise")
+            .filter(|m| {
+                #[allow(deprecated)]
+                let message_datetime = NaiveDateTime::from_timestamp(m.timestamp.as_secs(), 0);
+
+                message_datetime > from
+            })
+            .take(max_messages - messages_to_summarise.len())
+            .collect::<Vec<_>>();
+
+        if !msgs.is_empty() {
+            last_message_id = Some(msgs[msgs.len() - 1].id);
+        }
+
+        let new_messages_len = msgs.len();
+        messages_to_summarise.append(&mut msgs);
+        tracing::info!("message: {}", messages_to_summarise.len());
+        if messages_to_summarise.len() > max_messages || new_messages_len == 0 {
+            break;
+        }
+    }
 
     let message_prompt = messages_to_summarise
         .into_iter()
-        .filter(|m| m.author.id != bot_id)
         .map(|m| MessageContent {
             message: m.content,
             user_id: m.author.name,
@@ -267,7 +314,7 @@ async fn summarise(ctx: &mut SlashContext<BotContext>) -> DefaultCommandResult {
     let quotes_formatted = response
         .quotes
         .iter()
-        .map(|q| format!("- *\"{}\"* - {}", q.message, q.user_id))
+        .map(|q| format!("```\"{}\" - {}```", q.message, q.user_id))
         .collect::<Vec<_>>()
         .join("\n");
 
