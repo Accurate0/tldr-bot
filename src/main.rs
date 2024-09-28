@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 use axum::{routing::get, Router};
 use chrono::{NaiveDateTime, TimeDelta};
 use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
@@ -181,6 +181,57 @@ async fn source(
     Ok(())
 }
 
+fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
+    let mut hours = 0;
+    let mut minutes = 0;
+    let mut seconds = 0;
+
+    let mut it = s.chars().peekable();
+    let mut number = vec![];
+
+    loop {
+        if it.peek().is_none() {
+            break;
+        }
+
+        let c = *it.peek().unwrap();
+        match c {
+            '0'..='9' => loop {
+                let c = *it.peek().unwrap();
+                if c.is_ascii_digit() {
+                    number.push(c as u8);
+                    it.next();
+                } else {
+                    break;
+                }
+            },
+            'm' | 'h' | 's' => {
+                println!("{number:?}");
+                if number.is_empty() {
+                    bail!("missing number before h, m, or s")
+                }
+
+                match c {
+                    'h' => hours = String::from_utf8(number.clone())?.parse()?,
+                    'm' => minutes = String::from_utf8(number.clone())?.parse()?,
+                    's' => seconds = String::from_utf8(number.clone())?.parse()?,
+
+                    _ => unreachable!(),
+                }
+
+                it.next();
+                number.clear();
+            }
+            c if c.is_whitespace() => {
+                it.next();
+            }
+            c => bail!("unexpected char: {}, format example: 1h 32m 2s", c),
+        }
+    }
+
+    Ok(TimeDelta::hours(hours) + TimeDelta::minutes(minutes) + TimeDelta::seconds(seconds))
+}
+
 #[command]
 #[only_guilds]
 #[description = "summary"]
@@ -191,11 +242,11 @@ async fn summarise(
     #[description = "only show me the message"] ephemeral: Option<bool>,
 ) -> DefaultCommandResult {
     let ephemeral = ephemeral.unwrap_or(false);
-    let timeframe = timeframe.unwrap_or("2h".to_owned());
-    let hours = timeframe.replace("h", "").parse::<i64>()?;
+    let from = parse_datetime_str(&timeframe.unwrap_or("2h".to_string()))?;
+
     let from = chrono::offset::Utc::now()
         .naive_utc()
-        .checked_sub_signed(TimeDelta::hours(hours))
+        .checked_sub_signed(from)
         .context("must be valid time")?;
 
     ctx.defer(ephemeral).await?;
@@ -468,4 +519,24 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("3h", TimeDelta::hours(3))]
+    #[case("2h 2s", TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m 2h 2s", TimeDelta::minutes(20) + TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m 2s", TimeDelta::minutes(20) + TimeDelta::seconds(2))]
+    #[case("21243s", TimeDelta::seconds(21243))]
+    #[case("2332m 2h 2s", TimeDelta::minutes(2332) + TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m", TimeDelta::minutes(20))]
+    fn test_parse_datetime_str(#[case] s: &str, #[case] expected: TimeDelta) {
+        let result = parse_datetime_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
 }

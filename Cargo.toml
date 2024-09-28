@@ -20,3 +20,7 @@ twilight-model = "0.15.4"
 vesper = "0.13.0"
 openai-api-rs = "5.0.10"
 chrono = "0.4.38"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+rstest = "0.22.0"
