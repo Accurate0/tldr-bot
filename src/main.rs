@@ -17,7 +17,7 @@ use twilight_model::{
     application::command::{CommandOptionChoice, CommandOptionChoiceValue},
     http::interaction::InteractionResponseData,
 };
-use twilight_util::builder::embed::EmbedBuilder;
+use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 use vesper::{framework::DefaultError, prelude::*};
 
 const OLLAMA_MODEL_NAME: &str = "llama3.2:1b";
@@ -104,7 +104,7 @@ async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()
 async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: DefaultError) {
     let fut = async {
         let embed = EmbedBuilder::new()
-            .title("Oops")
+            .title("oops")
             .description(error.to_string())
             .color(0xcc6666)
             .validate()?
@@ -391,13 +391,6 @@ async fn summarise(
     tracing::info!("response: {:?}", response);
 
     let response = serde_json::from_str::<MessageSummary>(&response)?;
-    let has_quotes = !response.quotes.is_empty();
-    let quotes_formatted = response
-        .quotes
-        .iter()
-        .map(|q| format!("```\"{}\" - {}```", q.message, q.user_id))
-        .collect::<Vec<_>>()
-        .join("\n");
 
     sqlx::query!(
         "INSERT INTO summaries (user_id, summary) VALUES ($1, $2)",
@@ -407,22 +400,20 @@ async fn summarise(
     .execute(&ctx.data.db)
     .await?;
 
-    let response = if has_quotes {
-        format!(
-            r#"
-**Summary:** {}
-**Quotes:**
-{}
-    "#,
-            response.summary, quotes_formatted
-        )
-    } else {
-        format!("**Summary:** {}", response.summary)
-    };
+    let mut embed = EmbedBuilder::new()
+        .title("Summary")
+        .description(response.summary)
+        .color(0x55cae2);
+
+    for quote in response.quotes {
+        embed = embed.field(EmbedFieldBuilder::new(quote.user_id, quote.message))
+    }
+
+    let embed = embed.validate()?.build();
 
     ctx.interaction_client
         .update_response(&ctx.interaction.token)
-        .content(Some(&response))?
+        .embeds(Some(&[embed]))?
         .await?;
 
     Ok(())
