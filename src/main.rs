@@ -276,7 +276,7 @@ async fn summarise(
         .collect::<Vec<_>>();
     let message_prompt = serde_json::to_string(&message_prompt)?;
 
-    tracing::info!("{:?}", message_prompt);
+    tracing::info!("prompt: {:?}", message_prompt);
 
     let response = if ai_source == AI_SOURCE_OLLAMA {
         let ollama = &ctx.data.ollama;
@@ -327,6 +327,8 @@ async fn summarise(
     } else {
         unreachable!()
     };
+
+    tracing::info!("response: {:?}", response);
 
     let response = serde_json::from_str::<MessageSummary>(&response)?;
     let has_quotes = !response.quotes.is_empty();
