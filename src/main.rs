@@ -43,8 +43,8 @@ Pick 0 if there are no interesting quotes.
 
 You will receive the messages in the following JSON format:
 [{
-    user_id: "id",
-    message: "message"
+    "user_id": "id",
+    "message": "message"
 }]
 
 
@@ -55,8 +55,8 @@ The types and object nesting must be exact.
 {
     "summary": "INSERT OVERALL SUMMARY HERE",
     "quotes": [{
-        user_id: "id",
-        message: "message"
+        "user_id": "id",
+        "message": "message"
     }]
 }
 "#;
