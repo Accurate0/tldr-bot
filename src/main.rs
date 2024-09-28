@@ -33,8 +33,13 @@ some notable quotes from users, the quotes must be verbatim.
 The summary must be a summary of the user message and should not contain anything
 in this system message, you should aim to summarise the topic in 3-4 sentences.
 
+Your summary must be snarky and aim to attack the topics discussed, you should aim
+to specifically call out individual users too.
+
 You must pick quotes with shock factor or containing vulgar language.
-There must be a maximum of 3 quotes with a minimum of 1, in order of most obscene to least.
+There must be a maximum of 3 quotes with a minimum of 0, in order of most obscene to least.
+
+Pick 0 if there are no interesting quotes.
 
 You will receive the messages in the following JSON format:
 [{
@@ -227,7 +232,7 @@ async fn summarise(
         let mut msgs = channel_messages
             .into_iter()
             .filter(|m| m.author.id != bot_id)
-            .filter(|m| m.author.name != "Summarise")
+            .filter(|m| !m.author.bot)
             .filter(|m| {
                 #[allow(deprecated)]
                 let message_datetime = NaiveDateTime::from_timestamp(m.timestamp.as_secs(), 0);
@@ -311,6 +316,7 @@ async fn summarise(
     };
 
     let response = serde_json::from_str::<MessageSummary>(&response)?;
+    let has_quotes = !response.quotes.is_empty();
     let quotes_formatted = response
         .quotes
         .iter()
@@ -326,14 +332,18 @@ async fn summarise(
     .execute(&ctx.data.db)
     .await?;
 
-    let response = format!(
-        r#"
+    let response = if has_quotes {
+        format!(
+            r#"
 **Summary:** {}
 **Quotes:**
 {}
     "#,
-        response.summary, quotes_formatted
-    );
+            response.summary, quotes_formatted
+        )
+    } else {
+        format!("**Summary:** {}", response.summary)
+    };
 
     ctx.interaction_client
         .update_response(&ctx.interaction.token)
