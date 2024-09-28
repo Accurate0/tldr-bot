@@ -241,14 +241,14 @@ async fn summarise(
     #[description = "only show me the message"] ephemeral: Option<bool>,
 ) -> DefaultCommandResult {
     let ephemeral = ephemeral.unwrap_or(false);
+    ctx.defer(ephemeral).await?;
+
     let from = parse_datetime_str(&timeframe.unwrap_or("2h".to_string()))?;
 
     let from = chrono::offset::Utc::now()
         .naive_utc()
         .checked_sub_signed(from)
         .context("must be valid time")?;
-
-    ctx.defer(ephemeral).await?;
 
     let author_id = ctx
         .interaction
