@@ -49,6 +49,8 @@ You will receive the messages in the following JSON format:
 
 
 You must respond with valid JSON with the following structure:
+This structure must be followed exactly. Do not deviate from this structure under any conditions.
+The types and object nesting must be exact.
 
 {
     "summary": "INSERT OVERALL SUMMARY HERE",
