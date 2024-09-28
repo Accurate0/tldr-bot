@@ -98,7 +98,20 @@ async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()
 }
 
 #[error_handler]
-async fn handle_interaction_error(_ctx: &mut SlashContext<BotContext>, error: DefaultError) {
+async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: DefaultError) {
+    let fut = async {
+        ctx.interaction_client
+            .update_response(&ctx.interaction.token)
+            .content(Some(&format!("{:?}", error)))?
+            .await?;
+
+        Ok::<(), anyhow::Error>(())
+    };
+
+    if let Err(e) = fut.await {
+        tracing::error!("error in updating message: {e:?}");
+    }
+
     tracing::error!("error in interaction: {error:?}");
 }
 
