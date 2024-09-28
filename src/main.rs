@@ -103,9 +103,15 @@ async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()
 #[error_handler]
 async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: DefaultError) {
     let fut = async {
+        let error = if error.to_string().contains("Missing Access") {
+            "This channel is not accessible to the bot...".to_string()
+        } else {
+            error.to_string()
+        };
+
         let embed = EmbedBuilder::new()
             .title("oops")
-            .description(error.to_string())
+            .description(error)
             .color(0xcc6666)
             .validate()?
             .build();
