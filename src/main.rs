@@ -17,6 +17,7 @@ use twilight_model::{
     application::command::{CommandOptionChoice, CommandOptionChoiceValue},
     http::interaction::InteractionResponseData,
 };
+use twilight_util::builder::embed::EmbedBuilder;
 use vesper::{framework::DefaultError, prelude::*};
 
 const OLLAMA_MODEL_NAME: &str = "llama3.2:1b";
@@ -102,9 +103,16 @@ async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()
 #[error_handler]
 async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: DefaultError) {
     let fut = async {
+        let embed = EmbedBuilder::new()
+            .title("Oops")
+            .description(error.to_string())
+            .color(0xcc6666)
+            .validate()?
+            .build();
+
         ctx.interaction_client
             .update_response(&ctx.interaction.token)
-            .content(Some(&format!("{:?}", error)))?
+            .embeds(Some(&[embed]))?
             .await?;
 
         Ok::<(), anyhow::Error>(())
