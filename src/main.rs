@@ -206,7 +206,6 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
                 }
             },
             'm' | 'h' | 's' => {
-                println!("{number:?}");
                 if number.is_empty() {
                     bail!("missing number before h, m, or s")
                 }
