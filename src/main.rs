@@ -104,7 +104,7 @@ async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: Def
     let fut = async {
         ctx.interaction_client
             .update_response(&ctx.interaction.token)
-            .content(Some("Something went wrong :)"))?
+            .content(Some(&format!("{:?}", error)))?
             .await?;
 
         Ok::<(), anyhow::Error>(())
