@@ -1,6 +1,6 @@
 use anyhow::{bail, Context};
 use axum::{routing::get, Router};
-use chrono::{DateTime, NaiveDateTime, TimeDelta};
+use chrono::{DateTime, TimeDelta};
 use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
 use openai_api_rs::v1::{
     api::OpenAIClient,
