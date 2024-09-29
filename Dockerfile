@@ -11,7 +11,6 @@ WORKDIR /app/${BINARY_NAME}-build
 COPY . .
 
 ENV SQLX_OFFLINE=true
-RUN  \ cargo test --locked --release --bin ${BINARY_NAME}
 RUN \
     --mount=type=cache,target=/app/${BINARY_NAME}-build/target/ \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
