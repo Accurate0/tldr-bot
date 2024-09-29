@@ -1,10 +1,10 @@
-ARG RUST_VERSION=1.79.0
+ARG RUST_VERSION=1.80
 ARG BINARY_NAME
 
 FROM rust:${RUST_VERSION}-slim-bookworm AS builder
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y pkg-config libssl-dev
+RUN apt-get update -y && apt-get install -y pkg-config libssl-dev curl
 
 WORKDIR /app/${BINARY_NAME}-build
 
@@ -33,7 +33,6 @@ RUN adduser \
 
 COPY --from=builder /app/${BINARY_NAME} /usr/local/bin/${BINARY_NAME}
 RUN chown appuser /usr/local/bin/${BINARY_NAME}
-RUN apt-get update && apt-get install -y curl
 
 USER appuser
 
