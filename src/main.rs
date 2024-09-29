@@ -90,10 +90,13 @@ struct BotContext {
 async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()> {
     #[allow(clippy::match_single_binding)]
     match event {
-        Event::GatewayHeartbeatAck => {}
+        Event::GatewayHeartbeatAck
+        | Event::MessageCreate(_)
+        | Event::MessageUpdate(_)
+        | Event::MessageDelete(_) => {}
         // Other events here...
         e => {
-            tracing::warn!("bad event: {e:?}")
+            tracing::warn!("unhandled event: {e:?}")
         }
     }
 
