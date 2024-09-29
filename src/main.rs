@@ -275,11 +275,17 @@ async fn summarise(
         .context("must have author")?
         .to_string();
 
+    let channel = ctx
+        .interaction
+        .channel
+        .as_ref()
+        .context("must have channel")?;
+
     let now = chrono::offset::Utc::now().naive_utc();
 
     let last_summary = sqlx::query!(
-        "SELECT created FROM summaries WHERE user_id = $1 ORDER BY created DESC LIMIT 1",
-        author_id
+        "SELECT created FROM summaries WHERE user_id = $1 AND channel_id = $2 ORDER BY created DESC LIMIT 1",
+        author_id, channel.id.to_string()
     )
     .fetch_one(&ctx.data.db)
     .await;
@@ -328,12 +334,6 @@ async fn summarise(
         .value;
 
     let bot_id = ctx.http_client().current_user().await?.model().await?.id;
-
-    let channel = ctx
-        .interaction
-        .channel
-        .as_ref()
-        .context("must have channel")?;
 
     let max_messages = 50;
     let mut messages_to_summarise = vec![];
@@ -445,8 +445,9 @@ async fn summarise(
     let response = serde_json::from_str::<MessageSummary>(&response)?;
 
     sqlx::query!(
-        "INSERT INTO summaries (user_id, summary) VALUES ($1, $2)",
+        "INSERT INTO summaries (user_id, channel_id, summary) VALUES ($1, $2, $3)",
         author_id,
+        channel.id.to_string(),
         serde_json::to_value(&response)?,
     )
     .execute(&ctx.data.db)

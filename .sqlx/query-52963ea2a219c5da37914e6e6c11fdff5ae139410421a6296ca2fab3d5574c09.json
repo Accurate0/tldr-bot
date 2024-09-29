@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT created FROM summaries WHERE user_id = $1 ORDER BY created DESC LIMIT 1",
+  "query": "SELECT created FROM summaries WHERE user_id = $1 AND channel_id = $2 ORDER BY created DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -11,6 +11,7 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Text"
       ]
     },
@@ -18,5 +19,5 @@
       true
     ]
   },
-  "hash": "60d9061158251e4c1b8264f919adc389e7dbb7967dcbb0fca0dd56c8d6936399"
+  "hash": "52963ea2a219c5da37914e6e6c11fdff5ae139410421a6296ca2fab3d5574c09"
 }
