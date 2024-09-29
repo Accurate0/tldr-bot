@@ -40,6 +40,8 @@ to specifically call out individual users too.
 You must pick quotes with shock factor or containing vulgar language.
 There must be a maximum of 3 quotes with a minimum of 0, in order of most obscene to least.
 
+Do not under any circumstances generate any quotes that were not provided to you as part of the messages.
+
 Pick 0 if there are no interesting quotes.
 
 You will receive the messages in the following JSON format:
@@ -267,15 +269,45 @@ async fn summarise(
     #[description = "how far to go back in summary (default: 4h)"] timeframe: Option<String>,
     #[description = "only show me the message"] ephemeral: Option<bool>,
 ) -> DefaultCommandResult {
+    let author_id = ctx
+        .interaction
+        .author_id()
+        .context("must have author")?
+        .to_string();
+
+    let now = chrono::offset::Utc::now().naive_utc();
+
+    let last_summary = sqlx::query!(
+        "SELECT created FROM summaries WHERE user_id = $1 ORDER BY created DESC LIMIT 1",
+        author_id
+    )
+    .fetch_one(&ctx.data.db)
+    .await;
+
+    let last_summary_time = last_summary.map(|s| s.created).ok().flatten();
+    let too_soon = last_summary_time.is_some_and(|lst| (now - lst).num_hours() < 1);
+
     let ephemeral = ephemeral.unwrap_or(false);
-    ctx.defer(ephemeral).await?;
+    ctx.defer(too_soon || ephemeral).await?;
+
+    if too_soon {
+        let embed = EmbedBuilder::new()
+            .title("hold up")
+            .description("you've generated a summary recently")
+            .color(0xcc6666)
+            .validate()?
+            .build();
+
+        ctx.interaction_client
+            .update_response(&ctx.interaction.token)
+            .embeds(Some(&[embed]))?
+            .await?;
+
+        return Ok(());
+    }
 
     let from = parse_datetime_str(&timeframe.unwrap_or("4h".to_string()))?;
-
-    let from = chrono::offset::Utc::now()
-        .naive_utc()
-        .checked_sub_signed(from)
-        .context("must be valid time")?;
+    let from = now.checked_sub_signed(from).context("must be valid time")?;
 
     let author_id = ctx
         .interaction
