@@ -4,13 +4,14 @@ ARG BINARY_NAME
 FROM rust:${RUST_VERSION}-slim-bookworm AS builder
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y pkg-config libssl-dev curl
+RUN apt-get update -y && apt-get install -y pkg-config libssl-dev
 
 WORKDIR /app/${BINARY_NAME}-build
 
 COPY . .
 
 ENV SQLX_OFFLINE=true
+RUN  \ cargo test --locked --release --bin ${BINARY_NAME}
 RUN \
     --mount=type=cache,target=/app/${BINARY_NAME}-build/target/ \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
@@ -33,6 +34,7 @@ RUN adduser \
 
 COPY --from=builder /app/${BINARY_NAME} /usr/local/bin/${BINARY_NAME}
 RUN chown appuser /usr/local/bin/${BINARY_NAME}
+RUN apt-get update && apt-get install -y curl
 
 USER appuser
 
