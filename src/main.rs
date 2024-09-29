@@ -1,13 +1,13 @@
 use anyhow::{bail, Context};
-use axum::{routing::get, Router};
+use axum::{extract::State, http::StatusCode, routing::get, Router};
 use chrono::{DateTime, TimeDelta};
 use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
 use openai_api_rs::v1::{
     api::OpenAIClient,
     chat_completion::{ChatCompletionMessage, ChatCompletionRequest, Content, MessageRole},
 };
-use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::{future::IntoFuture, sync::Arc};
+use sqlx::{postgres::PgPoolOptions, Connection, PgPool};
+use std::{future::IntoFuture, ops::Deref, sync::Arc};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 use twilight_cache_inmemory::{InMemoryCacheBuilder, ResourceType};
@@ -81,7 +81,18 @@ pub enum RoleType {
     Admin,
 }
 
-struct BotContext {
+#[derive(Clone)]
+struct BotContext(Arc<BotContextInner>);
+
+impl Deref for BotContext {
+    type Target = BotContextInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+struct BotContextInner {
     ollama: ollama_rs::Ollama,
     openai: OpenAIClient,
     db: PgPool,
@@ -428,6 +439,20 @@ async fn summarise(
     Ok(())
 }
 
+async fn health(ctx: State<BotContext>) -> StatusCode {
+    let resp = ctx.db.acquire().await;
+
+    if resp.is_err() {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    }
+
+    let resp = resp.unwrap().ping().await;
+    match resp {
+        Ok(_) => StatusCode::NO_CONTENT,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
@@ -461,11 +486,14 @@ async fn main() -> anyhow::Result<()> {
     .execute(&pool)
     .await?;
 
-    let context = BotContext {
-        ollama,
-        openai,
-        db: pool,
-    };
+    let context = BotContext(
+        BotContextInner {
+            ollama,
+            openai,
+            db: pool,
+        }
+        .into(),
+    );
 
     let config = ConfigBuilder::new(
         token.clone(),
@@ -480,7 +508,10 @@ async fn main() -> anyhow::Result<()> {
         .resource_types(ResourceType::MESSAGE)
         .build();
 
-    let app = Router::new().route("/health", get(|| async { "ok" }));
+    let app = Router::new()
+        .route("/health", get(health))
+        .with_state(context.clone());
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
     tracing::info!("spawning axum");
     tokio::spawn(axum::serve(listener, app).into_future());
