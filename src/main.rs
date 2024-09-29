@@ -1,6 +1,6 @@
 use anyhow::{bail, Context};
 use axum::{routing::get, Router};
-use chrono::{NaiveDateTime, TimeDelta};
+use chrono::{DateTime, NaiveDateTime, TimeDelta};
 use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
 use openai_api_rs::v1::{
     api::OpenAIClient,
@@ -88,7 +88,6 @@ struct BotContext {
 }
 
 async fn handle_event(event: Event, _http: Arc<HttpClient>) -> anyhow::Result<()> {
-    #[allow(clippy::match_single_binding)]
     match event {
         Event::GatewayHeartbeatAck
         | Event::MessageCreate(_)
@@ -313,11 +312,12 @@ async fn summarise(
 
         let mut msgs = channel_messages
             .into_iter()
-            .filter(|m| m.author.id != bot_id)
             .filter(|m| !m.author.bot)
+            .filter(|m| m.author.id != bot_id)
             .filter(|m| {
-                #[allow(deprecated)]
-                let message_datetime = NaiveDateTime::from_timestamp(m.timestamp.as_secs(), 0);
+                let message_datetime = DateTime::from_timestamp(m.timestamp.as_secs(), 0)
+                    .map(|dt| dt.naive_utc())
+                    .expect("must be valid time");
 
                 message_datetime > from
             })
