@@ -226,8 +226,8 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
         let c = *it.peek().unwrap();
         match c {
             '0'..='9' => loop {
-                let c = *it.peek();
-                if c.is_some_and(|c| c.is_ascii_digit()) {
+                let c = it.peek();
+                if c.is_some_and(|c| *c.is_ascii_digit()) {
                     number.push(c as u8);
                     it.next();
                 } else {
