@@ -257,6 +257,10 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
         }
     }
 
+    if !number.is_empty() {
+        bail!("invalid format, example: 1h 23m")
+    }
+
     Ok(TimeDelta::hours(hours) + TimeDelta::minutes(minutes) + TimeDelta::seconds(seconds))
 }
 
@@ -628,5 +632,16 @@ mod tests {
     fn test_parse_datetime_str(#[case] s: &str, #[case] expected: TimeDelta) {
         let result = parse_datetime_str(s).unwrap();
         assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    #[case("3x")]
+    #[case("0")]
+    #[case("h")]
+    #[case("h3")]
+    #[case("2hr")]
+    fn test_parse_datetime_str_fail(#[case] s: &str) {
+        let result = parse_datetime_str(s);
+        assert!(result.is_err())
     }
 }
