@@ -253,7 +253,7 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
             c if c.is_whitespace() => {
                 it.next();
             }
-            c => bail!("unexpected char: {}, format example: 1h 32m 2s", c),
+            c => bail!("unexpected char: {}, example: 1h 32m 2s", c),
         }
     }
 
