@@ -21,7 +21,8 @@ vesper = "0.13.0"
 openai-api-rs = "5.0.10"
 chrono = "0.4.38"
 twilight-util = { version = "0.15.4", features = ["builder"] }
+phf = { version = "0.11.2", features = ["macros"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
-rstest = "0.22.0"
+rstest = "0.23.0"

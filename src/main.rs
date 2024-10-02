@@ -6,6 +6,7 @@ use openai_api_rs::v1::{
     api::OpenAIClient,
     chat_completion::{ChatCompletionMessage, ChatCompletionRequest, Content, MessageRole},
 };
+use phf::phf_map;
 use sqlx::{postgres::PgPoolOptions, Connection, PgPool};
 use std::{future::IntoFuture, ops::Deref, sync::Arc};
 use tracing::Level;
@@ -210,10 +211,15 @@ async fn source(
     Ok(())
 }
 
+type TimeDeltaFn = fn(i64) -> TimeDelta;
+const TIME_DELTA_FN_MAP: phf::Map<char, TimeDeltaFn> = phf_map! {
+    'h' => TimeDelta::hours,
+    'm' => TimeDelta::minutes,
+    's' => TimeDelta::seconds
+};
+
 fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
-    let mut hours = 0;
-    let mut minutes = 0;
-    let mut seconds = 0;
+    let mut final_time_delta = TimeDelta::zero();
 
     let mut it = s.chars().peekable();
     let mut number = vec![];
@@ -239,13 +245,12 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
                     bail!("missing number before h, m, or s")
                 }
 
-                match c {
-                    'h' => hours = String::from_utf8(number.clone())?.parse()?,
-                    'm' => minutes = String::from_utf8(number.clone())?.parse()?,
-                    's' => seconds = String::from_utf8(number.clone())?.parse()?,
+                let time_value = String::from_utf8(number.clone())?.parse()?;
+                let time_delta_fn = TIME_DELTA_FN_MAP.get(&c).context("invalid time operator")?;
 
-                    _ => unreachable!(),
-                }
+                final_time_delta = final_time_delta
+                    .checked_add(&time_delta_fn(time_value))
+                    .context("time too large...")?;
 
                 it.next();
                 number.clear();
@@ -261,7 +266,7 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
         bail!("invalid format, example: 1h 23m")
     }
 
-    Ok(TimeDelta::hours(hours) + TimeDelta::minutes(minutes) + TimeDelta::seconds(seconds))
+    Ok(final_time_delta)
 }
 
 #[command]
