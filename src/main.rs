@@ -290,13 +290,26 @@ async fn summarise(
     .fetch_one(&ctx.data.db)
     .await;
 
+    let result = sqlx::query!(
+        r#"SELECT role as "role: RoleType" FROM USERS WHERE id = $1"#,
+        author_id
+    )
+    .fetch_one(&ctx.data.db)
+    .await;
+
     let last_summary_time = last_summary.map(|s| s.created).ok().flatten();
+    let is_admin = result
+        .map(|r| r.role)
+        .ok()
+        .is_some_and(|r| r == RoleType::Admin);
+
     let too_soon = last_summary_time.is_some_and(|lst| (now - lst).num_hours() < 1);
+    let should_stop_summary = !is_admin && too_soon;
 
     let ephemeral = ephemeral.unwrap_or(false);
-    ctx.defer(too_soon || ephemeral).await?;
+    ctx.defer(should_stop_summary || ephemeral).await?;
 
-    if too_soon {
+    if should_stop_summary {
         let embed = EmbedBuilder::new()
             .title("hold up")
             .description("you've generated a summary recently")
@@ -336,6 +349,7 @@ async fn summarise(
     let bot_id = ctx.http_client().current_user().await?.model().await?.id;
 
     let max_messages = 50;
+    let message_limit = 100;
     let mut messages_to_summarise = vec![];
     let mut last_message_id = None;
 
@@ -345,12 +359,16 @@ async fn summarise(
         let channel_messages = if let Some(last_message_id) = last_message_id {
             channel_messages
                 .before(last_message_id)
-                .limit(100)?
+                .limit(message_limit)?
                 .await?
                 .models()
                 .await?
         } else {
-            channel_messages.limit(100)?.await?.models().await?
+            channel_messages
+                .limit(message_limit)?
+                .await?
+                .models()
+                .await?
         };
 
         let mut msgs = channel_messages
@@ -374,13 +392,14 @@ async fn summarise(
         let new_messages_len = msgs.len();
         messages_to_summarise.append(&mut msgs);
         tracing::info!("message: {}", messages_to_summarise.len());
-        if messages_to_summarise.len() > max_messages || new_messages_len == 0 {
+        if messages_to_summarise.len() >= max_messages || new_messages_len == 0 {
             break;
         }
     }
 
     let message_prompt = messages_to_summarise
         .into_iter()
+        .rev()
         .map(|m| MessageContent {
             message: m.content,
             user_id: m.author.name,
