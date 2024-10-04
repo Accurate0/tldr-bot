@@ -211,11 +211,11 @@ async fn source(
     Ok(())
 }
 
-type TimeDeltaFn = fn(i64) -> TimeDelta;
+type TimeDeltaFn = fn(i64) -> Option<TimeDelta>;
 const TIME_DELTA_FN_MAP: phf::Map<char, TimeDeltaFn> = phf_map! {
-    'h' => TimeDelta::hours,
-    'm' => TimeDelta::minutes,
-    's' => TimeDelta::seconds
+    'h' => TimeDelta::try_hours,
+    'm' => TimeDelta::try_minutes,
+    's' => TimeDelta::try_seconds
 };
 
 fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
@@ -249,7 +249,7 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
                 let time_delta_fn = TIME_DELTA_FN_MAP.get(&c).context("invalid time operator")?;
 
                 final_time_delta = final_time_delta
-                    .checked_add(&time_delta_fn(time_value))
+                    .checked_add(&time_delta_fn(time_value).context("invalid time")?)
                     .context("time too large...")?;
 
                 it.next();
