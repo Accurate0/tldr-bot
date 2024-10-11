@@ -357,7 +357,7 @@ async fn summarise(
 
     let bot_id = ctx.http_client().current_user().await?.model().await?.id;
 
-    let max_messages = 50;
+    let max_messages = 150;
     let message_limit = 100;
     let mut messages_to_summarise = vec![];
     let mut last_message_id = None;
