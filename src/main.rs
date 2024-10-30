@@ -482,7 +482,7 @@ async fn tldr(
     .await?;
 
     let mut embed = EmbedBuilder::new()
-        .title("TL;DR")
+        .title("tl;dr")
         .description(response.summary)
         .color(0x55cae2);
 
