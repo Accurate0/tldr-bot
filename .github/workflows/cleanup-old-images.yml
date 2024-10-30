@@ -17,14 +17,6 @@ jobs:
         with:
           account: user
           token: ${{ secrets.GITHUB_TOKEN }}
-          image-names: "summarise"
-          keep-n-most-recent: 0
-          cut-off: 1h
-
-      - uses: snok/container-retention-policy@v3.0.0
-        with:
-          account: user
-          token: ${{ secrets.GITHUB_TOKEN }}
           image-names: "tldr-bot"
           image-tags: "!latest"
           keep-n-most-recent: 3
