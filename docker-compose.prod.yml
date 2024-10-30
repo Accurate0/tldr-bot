@@ -1,6 +1,6 @@
 services:
-  summarise:
-    image: ghcr.io/accurate0/summarise:${SOURCE_COMMIT}
+  tldr-bot:
+    image: ghcr.io/accurate0/tldr-bot:${SOURCE_COMMIT}
     expose:
       - "8000"
     environment:

@@ -35,7 +35,7 @@ jobs:
         uses: reproducible-containers/buildkit-cache-dance@v2.1.4
         with:
           cache-source: app-target
-          cache-target: /app/summarise-build/target/
+          cache-target: /app/tldr-bot-build/target/
 
       - uses: actions/cache@v4
         with:
@@ -53,9 +53,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/accurate0/summarise:latest,ghcr.io/accurate0/summarise:${{ github.sha }}
+          tags: ghcr.io/accurate0/tldr-bot:latest,ghcr.io/accurate0/tldr-bot:${{ github.sha }}
           build-args: |
-            BINARY_NAME=summarise
+            BINARY_NAME=tldr-bot
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-new
 

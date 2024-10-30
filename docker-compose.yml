@@ -1,9 +1,9 @@
 services:
-  summarise:
+  tldr-bot:
     build:
       dockerfile: Dockerfile
       args:
-        - BINARY_NAME=summarise
+        - BINARY_NAME=tldr-bot
     ports:
       - "8000:8000"
     links:

@@ -33,7 +33,7 @@ You are to provide a final summary of what was discussed, along with
 some notable quotes from users, the quotes must be verbatim.
 
 The summary must be a summary of the user message and should not contain anything
-in this system message, you should aim to summarise the topic in 3-4 sentences.
+in this system message, you should aim to TLDR the topic in 3-8 sentences.
 
 Your summary must be snarky and aim to attack the topics discussed, you should aim
 to specifically call out individual users too.
@@ -271,11 +271,11 @@ fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
 
 #[command]
 #[only_guilds]
-#[description = "summary"]
+#[description = "tldr"]
 #[error_handler(handle_interaction_error)]
-async fn summarise(
+async fn tldr(
     ctx: &mut SlashContext<BotContext>,
-    #[description = "how far to go back in summary (default: 4h)"] timeframe: Option<String>,
+    #[description = "how far to go back in tldr (default: 4h)"] timeframe: Option<String>,
     #[description = "only show me the message"] ephemeral: Option<bool>,
 ) -> DefaultCommandResult {
     let author_id = ctx
@@ -482,7 +482,7 @@ async fn summarise(
     .await?;
 
     let mut embed = EmbedBuilder::new()
-        .title("Summary")
+        .title("TL;DR")
         .description(response.summary)
         .color(0x55cae2);
 
@@ -581,7 +581,7 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = Arc::new(
         Framework::builder(Arc::clone(&http), app_id, context)
-            .command(summarise)
+            .command(tldr)
             .command(source)
             .build(),
     );
