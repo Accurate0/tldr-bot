@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tldr-bot
+  namespace: tldr-bot
+  annotations:
+    secrets.infisical.com/auto-reload: "true"
+spec:
+  selector:
+    matchLabels:
+      app: tldr-bot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tldr-bot
+    spec:
+      containers:
+        - name: tldr-bot
+          image: ghcr.io/accurate0/tldr-bot:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: tldr-bot-volume
+              mountPath: /data
+          envFrom:
+            - secretRef:
+                name: tldr-bot-managed-secrets
