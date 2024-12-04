@@ -527,9 +527,12 @@ async fn main() -> anyhow::Result<()> {
     let openai_api_key = std::env::var("OPENAI_API_KEY")?;
 
     let ollama = ollama_rs::Ollama::new(ollama_api_base, 11434);
-    ollama
+    if let Err(e) = ollama
         .pull_model(OLLAMA_MODEL_NAME.to_string(), false)
-        .await?;
+        .await
+    {
+        tracing::warn!("failed to pull model: {e}")
+    };
 
     let openai = OpenAIClient::new(openai_api_key);
 
@@ -542,7 +545,7 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::query!(
         "INSERT INTO settings (key, value) VALUES ('ai_source', $1) ON CONFLICT DO NOTHING",
-        AI_SOURCE_OLLAMA
+        AI_SOURCE_OPENAI
     )
     .execute(&pool)
     .await?;
