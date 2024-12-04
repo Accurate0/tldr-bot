@@ -19,9 +19,6 @@ spec:
         - name: tldr-bot
           image: ghcr.io/accurate0/tldr-bot:latest
           imagePullPolicy: Always
-          volumeMounts:
-            - name: tldr-bot-volume
-              mountPath: /data
           envFrom:
             - secretRef:
                 name: tldr-bot-managed-secrets
