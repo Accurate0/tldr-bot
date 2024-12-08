@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: tldr-bot
-          image: ghcr.io/accurate0/tldr-bot:latest
+          image: tldr-bot:latest
           imagePullPolicy: Always
           envFrom:
             - secretRef:

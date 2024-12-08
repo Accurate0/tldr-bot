@@ -11,8 +11,9 @@ spec:
   source:
     repoURL: https://github.com/Accurate0/tldr-bot.git
     path: kubernetes
-    directory:
-      include: "*.yaml"
+    kustomize:
+      images:
+        - tldr-bot=ghcr.io/accurate0/tldr-bot:${ARGOCD_APP_REVISION}
   destination:
     server: https://kubernetes.default.svc
     namespace: tldr-bot
