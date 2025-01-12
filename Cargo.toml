@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
-axum = "0.7.7"
+axum = "0.8.0"
 ollama-rs = "0.2.1"
 serde = "1.0.210"
 serde_json = "1.0.128"
@@ -13,16 +13,16 @@ sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres", "tls-rustls
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-twilight-cache-inmemory = "0.15.4"
-twilight-gateway = "0.15.4"
-twilight-http = "0.15.4"
-twilight-model = "0.15.4"
+twilight-cache-inmemory = "0.16.0"
+twilight-gateway = "0.16.0"
+twilight-http = "0.16.0"
+twilight-model = "0.16.0"
 vesper = "0.13.0"
 openai-api-rs = "5.0.10"
 chrono = "0.4.38"
-twilight-util = { version = "0.15.4", features = ["builder"] }
+twilight-util = { version = "0.16.0", features = ["builder"] }
 phf = { version = "0.11.2", features = ["macros"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
-rstest = "0.23.0"
+rstest = "0.24.0"
