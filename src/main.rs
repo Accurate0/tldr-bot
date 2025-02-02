@@ -1,9 +1,8 @@
 use anyhow::{bail, Context};
 use axum::{extract::State, http::StatusCode, routing::get, Router};
 use chrono::{DateTime, TimeDelta};
-use ollama_rs::generation::{completion::request::GenerationRequest, parameters::FormatType};
 use openai_api_rs::v1::{
-    api::OpenAIClient,
+    api::{OpenAIClient, OpenAIClientBuilder},
     chat_completion::{ChatCompletionMessage, ChatCompletionRequest, Content, MessageRole},
 };
 use phf::phf_map;
@@ -11,8 +10,8 @@ use sqlx::{postgres::PgPoolOptions, Connection, PgPool};
 use std::{future::IntoFuture, ops::Deref, sync::Arc};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
-use twilight_cache_inmemory::{InMemoryCacheBuilder, ResourceType};
-use twilight_gateway::{ConfigBuilder, Event, EventTypeFlags, Intents, Shard, ShardId};
+use twilight_cache_inmemory::{DefaultCacheModels, InMemoryCacheBuilder, ResourceType};
+use twilight_gateway::{ConfigBuilder, Event, EventTypeFlags, Intents, Shard, ShardId, StreamExt};
 use twilight_http::Client as HttpClient;
 use twilight_model::{
     application::command::{CommandOptionChoice, CommandOptionChoiceValue},
@@ -21,7 +20,6 @@ use twilight_model::{
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 use vesper::{framework::DefaultError, prelude::*};
 
-const OLLAMA_MODEL_NAME: &str = "llama3.2:1b";
 const OPENAI_MODEL_NAME: &str = "gpt-4o";
 
 const AI_SOURCE_OLLAMA: &str = "ollama";
@@ -96,7 +94,6 @@ impl Deref for BotContext {
 }
 
 struct BotContextInner {
-    ollama: ollama_rs::Ollama,
     openai: OpenAIClient,
     db: PgPool,
 }
@@ -134,7 +131,7 @@ async fn handle_interaction_error(ctx: &mut SlashContext<BotContext>, error: Def
 
         ctx.interaction_client
             .update_response(&ctx.interaction.token)
-            .embeds(Some(&[embed]))?
+            .embeds(Some(&[embed]))
             .await?;
 
         Ok::<(), anyhow::Error>(())
@@ -205,7 +202,7 @@ async fn source(
 
     ctx.interaction_client
         .update_response(&ctx.interaction.token)
-        .content(Some("Done"))?
+        .content(Some("Done"))
         .await?;
 
     Ok(())
@@ -328,7 +325,7 @@ async fn tldr(
 
         ctx.interaction_client
             .update_response(&ctx.interaction.token)
-            .embeds(Some(&[embed]))?
+            .embeds(Some(&[embed]))
             .await?;
 
         return Ok(());
@@ -350,11 +347,6 @@ async fn tldr(
     .execute(&ctx.data.db)
     .await?;
 
-    let ai_source = sqlx::query!("SELECT * FROM settings WHERE key = 'ai_source'")
-        .fetch_one(&ctx.data.db)
-        .await?
-        .value;
-
     let bot_id = ctx.http_client().current_user().await?.model().await?.id;
 
     let max_messages = 150;
@@ -368,13 +360,13 @@ async fn tldr(
         let channel_messages = if let Some(last_message_id) = last_message_id {
             channel_messages
                 .before(last_message_id)
-                .limit(message_limit)?
+                .limit(message_limit)
                 .await?
                 .models()
                 .await?
         } else {
             channel_messages
-                .limit(message_limit)?
+                .limit(message_limit)
                 .await?
                 .models()
                 .await?
@@ -417,56 +409,42 @@ async fn tldr(
     let message_prompt = serde_json::to_string(&message_prompt)?;
 
     tracing::info!("prompt: {:?}", message_prompt);
+    let openai = &ctx.data.openai;
 
-    let response = if ai_source == AI_SOURCE_OLLAMA {
-        let ollama = &ctx.data.ollama;
+    let request = ChatCompletionRequest::new(
+        OPENAI_MODEL_NAME.to_owned(),
+        vec![
+            ChatCompletionMessage {
+                role: MessageRole::system,
+                content: Content::Text(SYSTEM_MESSAGE.to_owned()),
+                name: None,
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            ChatCompletionMessage {
+                role: MessageRole::user,
+                content: Content::Text(message_prompt),
+                name: None,
+                tool_call_id: None,
+                tool_calls: None,
+            },
+        ],
+    )
+    .response_format(serde_json::json!(
+        { "type": "json_object" }
+    ));
 
-        let generation_request =
-            GenerationRequest::new(OLLAMA_MODEL_NAME.to_owned(), message_prompt)
-                .format(FormatType::Json)
-                .system(SYSTEM_MESSAGE.to_string());
-        ollama.generate(generation_request).await?.response
-    } else if ai_source == AI_SOURCE_OPENAI {
-        let openai = &ctx.data.openai;
-
-        let request = ChatCompletionRequest::new(
-            OPENAI_MODEL_NAME.to_owned(),
-            vec![
-                ChatCompletionMessage {
-                    role: MessageRole::system,
-                    content: Content::Text(SYSTEM_MESSAGE.to_owned()),
-                    name: None,
-                    tool_call_id: None,
-                    tool_calls: None,
-                },
-                ChatCompletionMessage {
-                    role: MessageRole::user,
-                    content: Content::Text(message_prompt),
-                    name: None,
-                    tool_call_id: None,
-                    tool_calls: None,
-                },
-            ],
-        )
-        .response_format(serde_json::json!(
-            { "type": "json_object" }
-        ));
-
-        let response = openai.chat_completion(request).await?;
-
-        response
-            .choices
-            .first()
-            .as_ref()
-            .context("must have 1 response")?
-            .message
-            .content
-            .as_ref()
-            .context("must have content")?
-            .to_owned()
-    } else {
-        unreachable!()
-    };
+    let response = openai.chat_completion(request).await?;
+    let response = response
+        .choices
+        .first()
+        .as_ref()
+        .context("must have 1 response")?
+        .message
+        .content
+        .as_ref()
+        .context("must have content")?
+        .to_owned();
 
     tracing::info!("response: {:?}", response);
 
@@ -494,7 +472,7 @@ async fn tldr(
 
     ctx.interaction_client
         .update_response(&ctx.interaction.token)
-        .embeds(Some(&[embed]))?
+        .embeds(Some(&[embed]))
         .await?;
 
     Ok(())
@@ -523,18 +501,12 @@ async fn main() -> anyhow::Result<()> {
 
     let database_url = std::env::var("DATABASE_URL")?;
     let token = std::env::var("DISCORD_TOKEN")?;
-    let ollama_api_base = std::env::var("OLLAMA_API_BASE")?;
     let openai_api_key = std::env::var("OPENAI_API_KEY")?;
 
-    let ollama = ollama_rs::Ollama::new(ollama_api_base, 11434);
-    if let Err(e) = ollama
-        .pull_model(OLLAMA_MODEL_NAME.to_string(), false)
-        .await
-    {
-        tracing::warn!("failed to pull model: {e}")
-    };
-
-    let openai = OpenAIClient::new(openai_api_key);
+    let openai = OpenAIClientBuilder::new()
+        .with_api_key(openai_api_key)
+        .build()
+        .map_err(|_| anyhow::Error::msg("failed building openai client"))?;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -550,25 +522,17 @@ async fn main() -> anyhow::Result<()> {
     .execute(&pool)
     .await?;
 
-    let context = BotContext(
-        BotContextInner {
-            ollama,
-            openai,
-            db: pool,
-        }
-        .into(),
-    );
+    let context = BotContext(BotContextInner { openai, db: pool }.into());
 
     let config = ConfigBuilder::new(
         token.clone(),
         Intents::GUILD_MESSAGES | Intents::MESSAGE_CONTENT,
-    )
-    .event_types(EventTypeFlags::all());
+    );
 
     let mut shard = Shard::with_config(ShardId::ONE, config.build());
 
     let http = Arc::new(HttpClient::new(token));
-    let cache = InMemoryCacheBuilder::new()
+    let cache = InMemoryCacheBuilder::<DefaultCacheModels>::new()
         .resource_types(ResourceType::MESSAGE)
         .build();
 
@@ -593,14 +557,16 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("starting event loop");
     loop {
-        let event = shard.next_event().await;
+        let event = shard.next_event(EventTypeFlags::all()).await;
+        if event.is_none() {
+            tracing::error!("event stream finished");
+            break;
+        }
+
+        let event = event.unwrap();
         let Ok(event) = event else {
             let source = event.unwrap_err();
             tracing::warn!(source = ?source, "error receiving event");
-
-            if source.is_fatal() {
-                break;
-            }
 
             continue;
         };
