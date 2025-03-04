@@ -17,7 +17,7 @@ twilight-gateway = "0.16.0"
 twilight-http = "0.16.0"
 twilight-model = "0.16.0"
 vesper = "0.13.0"
-openai-api-rs = "5.2.5"
+openai-api-rs = "6.0.0"
 chrono = "0.4.39"
 twilight-util = { version = "0.16.0", features = ["builder"] }
 phf = { version = "0.11.3", features = ["macros"] }
