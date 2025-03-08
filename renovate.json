@@ -1,3 +1,11 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "description": "Ignore because mutability change",
+      "matchFileNames": ["*"],
+      "matchPackageNames": ["openai-api-rs"],
+      "enabled": false
+    }
+  ]
 }
