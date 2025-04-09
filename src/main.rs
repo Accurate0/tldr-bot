@@ -374,7 +374,6 @@ async fn tldr(
 
         let mut msgs = channel_messages
             .into_iter()
-            .filter(|m| !m.author.bot)
             .filter(|m| m.author.id != bot_id)
             .filter(|m| {
                 let message_datetime = DateTime::from_timestamp(m.timestamp.as_secs(), 0)
