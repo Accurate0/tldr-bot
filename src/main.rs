@@ -477,18 +477,8 @@ async fn tldr(
     Ok(())
 }
 
-async fn health(ctx: State<BotContext>) -> StatusCode {
-    let resp = ctx.db.acquire().await;
-
-    if resp.is_err() {
-        return StatusCode::SERVICE_UNAVAILABLE;
-    }
-
-    let resp = resp.unwrap().ping().await;
-    match resp {
-        Ok(_) => StatusCode::NO_CONTENT,
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
-    }
+async fn health(_ctx: State<BotContext>) -> StatusCode {
+    StatusCode::NO_CONTENT
 }
 
 #[tokio::main]
