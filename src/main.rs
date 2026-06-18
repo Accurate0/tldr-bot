@@ -48,19 +48,6 @@ You will receive the messages in the following JSON format:
     "user_id": "id",
     "message": "message"
 }]
-
-
-You must respond with valid JSON with the following structure:
-This structure must be followed exactly. Do not deviate from this structure under any conditions.
-The types and object nesting must be exact.
-
-{
-    "summary": "INSERT OVERALL SUMMARY HERE",
-    "quotes": [{
-        "user_id": "id",
-        "message": "message"
-    }]
-}
 "#;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -429,9 +416,37 @@ async fn tldr(
             },
         ],
     )
-    .response_format(serde_json::json!(
-        { "type": "json_object" }
-    ));
+    .response_format(serde_json::json!({
+        "type": "json_schema",
+        "json_schema": {
+            "name": "message_summary",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["summary", "quotes"],
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "Overall summary of what was discussed."
+                    },
+                    "quotes": {
+                        "type": "array",
+                        "description": "Up to 3 notable verbatim quotes, most obscene first.",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["user_id", "message"],
+                            "properties": {
+                                "user_id": { "type": "string" },
+                                "message": { "type": "string" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }));
 
     let response = openai.chat_completion(request).await?;
     let response = response
