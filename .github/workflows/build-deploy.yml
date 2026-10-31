@@ -25,7 +25,8 @@ jobs:
     with:
       service-name: tldr-bot
       images: ghcr.io/accurate0/tldr-bot
-      manifests-path: projects/tldr-bot/manifests
+      manifests-path: projects/tldr-bot
+      values-file: projects/tldr-bot/image.values.yaml
       tag: ${{ github.sha }}
     secrets:
       FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
